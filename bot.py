@@ -11,7 +11,7 @@ import pytz
 TOKEN = "7587932544:AAFkq39PjCaul1H5EEvvOyunAyFeD1adayc"
 APP_NAME = "telegram-bot-lcqh"  # Render 서비스 이름 (URL 앞부분)
 WEBHOOK_URL = f"https://{APP_NAME}.onrender.com/{TOKEN}"
-TARGET_CHAT_ID = "@test999"  # 채널 사용자명
+TARGET_CHAT_ID = "@test779900"  # 채널 사용자명
 image_files = ["test.jpg", "1.jpg", "2.jpg", "3.jpg", "4.jpg"]
 current_index = 0
 
