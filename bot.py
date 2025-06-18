@@ -21,7 +21,7 @@ app = Flask(__name__)
 bot = Bot(token=TOKEN)
 
 # 3. Dispatcher 구성
-dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+dispatcher = Dispatcher(bot, None, workers=1, use_context=True)
 
 # 4. 공지 전송 함수
 def send_notice():
