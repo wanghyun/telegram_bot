@@ -5,7 +5,7 @@ import pytz
 
 # 1. 봇 설정
 TOKEN = '7587932544:AAFkq39PjCaul1H5EEvvOyunAyFeD1adayc'
-TARGET_CHAT_ID = 2059077213  # 개인, 채널, 그룹 등
+TARGET_CHAT_ID = @test999  # 개인, 채널, 그룹 등
 
 # 2. 로깅 설정
 logging.basicConfig(
