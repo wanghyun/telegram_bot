@@ -47,7 +47,7 @@ def main():
     # 스케줄러 설정 (한국 시간대 기준)
     seoul_tz = pytz.timezone("Asia/Seoul")
     scheduler = BackgroundScheduler(timezone=seoul_tz)
-    scheduler.add_job(send_notice, 'interval', minutes=5, args=[updater.bot])
+    scheduler.add_job(send_notice, 'interval', minutes=1, args=[updater.bot])
     scheduler.start()
 
     updater.start_polling()
