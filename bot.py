@@ -5,7 +5,7 @@ import pytz
 
 # 1. 봇 설정
 TOKEN = '7587932544:AAFkq39PjCaul1H5EEvvOyunAyFeD1adayc'
-TARGET_CHAT_ID = '@test999'  # 개인, 채널, 그룹 등
+TARGET_CHAT_ID = '@test999'  # 또는 '-1001234567890' 형식 ID
 
 # 2. 로깅 설정
 logging.basicConfig(
@@ -15,15 +15,15 @@ logging.basicConfig(
 
 # 3. 자동 공지 이미지 순서
 image_files = ["test.jpg", "1.jpg", "2.jpg", "3.jpg", "4.jpg"]
-current_index = 0  # 현재 전송할 이미지 인덱스
+current_index = 0
 
 # 4. 공지 전송 함수
-def send_notice(bot):
+def send_notice():
     global current_index
     try:
         filename = image_files[current_index]
         with open(filename, "rb") as photo:
-            bot.send_photo(
+            updater.bot.send_photo(
                 chat_id=TARGET_CHAT_ID,
                 photo=photo,
                 caption=f"⏰ 자동 공지입니다. 3분마다 이미지가 순서대로 전송됩니다.\n지금은: {filename}"
@@ -52,20 +52,18 @@ def welcome_new_member(update, context):
 
 # 7. 메인 함수
 def main():
+    global updater
     updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
-    # 명령 및 이벤트 핸들러 등록
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcome_new_member))
 
-    # 1분마다 자동 공지 스케줄러 설정
     seoul_tz = pytz.timezone("Asia/Seoul")
     scheduler = BackgroundScheduler(timezone=seoul_tz)
-    scheduler.add_job(send_notice, 'interval', minutes=3, args=[updater.bot])
+    scheduler.add_job(send_notice, 'interval', minutes=3)
     scheduler.start()
 
-    # 봇 시작
     updater.start_polling()
     updater.idle()
 
