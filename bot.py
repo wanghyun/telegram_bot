@@ -1,26 +1,29 @@
-import os
-import logging
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
 import pytz
+import logging
+import os
+from datetime import datetime
 
 # 1. 설정
 TOKEN = '7587932544:AAFkq39PjCaul1H5EEvvOyunAyFeD1adayc'
-TARGET_CHAT_ID = '@test999'  # 채널명
+TARGET_CHAT_ID = '@test999'  # 채널 아이디
+APP_NAME = 'telegram-bot-lcqh'  # Render 앱 이름 (URL 참고)
+URL = f'https://{APP_NAME}.onrender.com'  # Webhook URL
+
 image_files = ["test.jpg", "1.jpg", "2.jpg", "3.jpg", "4.jpg"]
 current_index = 0
 
-# 2. 로깅
-logging.basicConfig(level=logging.INFO)
-
-# 3. Flask 앱 생성
+# 2. Flask 앱 및 봇 인스턴스 생성
 app = Flask(__name__)
 bot = Bot(token=TOKEN)
 
-# 4. 자동 공지 전송 함수
+# 3. Dispatcher 구성
+dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+
+# 4. 공지 전송 함수
 def send_notice():
     global current_index
     try:
@@ -29,71 +32,61 @@ def send_notice():
             bot.send_photo(
                 chat_id=TARGET_CHAT_ID,
                 photo=photo,
-                caption=f"⏰ 자동 공지: {filename} 이미지입니다."
+                caption=f"📢 자동 공지입니다 (이미지: {filename})"
             )
         current_index = (current_index + 1) % len(image_files)
     except Exception as e:
-        logging.error(f"[오류] 이미지 전송 실패: {e}")
+        print(f"[오류] 공지 전송 실패: {e}")
 
-# 5. /start 명령어 처리
-def start(update, context):
-    update.message.reply_text("🤖 안녕하세요! 자동 공지 봇입니다.")
-    logging.info(f"/start 요청 - chat_id: {update.effective_chat.id}")
-
-# 6. 새 유저 환영
-def welcome(update, context):
-    for user in update.message.new_chat_members:
-        try:
-            with open("welcome.jpg", "rb") as photo:
-                context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=photo,
-                    caption=f"👋 {user.full_name}님, 환영합니다!"
-                )
-        except Exception as e:
-            logging.error(f"[오류] 환영 이미지 전송 실패: {e}")
-
-# 7. /안전 명령어 처리
+# 5. /safety 명령어 처리
 def safety_command(update, context):
     try:
-        now = datetime.now(pytz.timezone("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S")
-        if os.path.exists("sa.txt"):
-            with open("sa.txt", "r", encoding="utf-8") as f:
-                content = f.read()
-        else:
-            content = "⚠️ sa.txt 파일이 존재하지 않습니다."
-
-        message = f"📅 현재 시각: {now}\n\n📄 안전 공지:\n{content}"
+        with open("sa.txt", "r", encoding="utf-8") as file:
+            content = file.read()
+        today = datetime.now().strftime("%Y-%m-%d")
+        message = f"📅 오늘 날짜: {today}\n📄 안전 정보:\n{content}"
         update.message.reply_text(message)
-
     except Exception as e:
-        logging.error(f"[오류] /안전 처리 실패: {e}")
-        update.message.reply_text("⚠️ 안전 정보를 불러오는 중 오류가 발생했습니다.")
+        update.message.reply_text(f"⚠️ 파일 읽기 오류: {e}")
 
-# 8. Flask에서 Webhook 처리
+# 6. 한글 /안전 명령어 메시지 처리
+def message_handler(update, context):
+    text = update.message.text.strip()
+    if text == "/안전":
+        safety_command(update, context)
+
+# 7. 핸들러 등록
+dispatcher.add_handler(CommandHandler("safety", safety_command))
+dispatcher.add_handler(MessageHandler(Filters.text & Filters.regex(r'^/안전$'), message_handler))
+
+# 8. Webhook 설정 엔드포인트
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), bot)
     dispatcher.process_update(update)
-    return "ok"
+    return 'OK'
 
-# 9. 메인 시작
-if __name__ == '__main__':
-    # Dispatcher 등록
-    from telegram.ext import Dispatcher
-    dispatcher = Dispatcher(bot, None, use_context=True)
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("안전", safety_command))
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcome))
+# 9. 홈 엔드포인트 (테스트용)
+@app.route('/')
+def index():
+    return 'Bot is running!'
 
-    # Webhook 설정
-    WEBHOOK_URL = "https://telegram-bot-lcqh.onrender.com"  # Render 앱 주소
-    bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
+# 10. Webhook 등록
+def set_webhook():
+    webhook_url = f'{URL}/{TOKEN}'
+    success = bot.set_webhook(url=webhook_url)
+    print(f"[설정] Webhook 설정 완료: {webhook_url}" if success else "[오류] Webhook 설정 실패")
 
-    # 스케줄러 시작
-    scheduler = BackgroundScheduler(timezone=pytz.timezone("Asia/Seoul"))
+# 11. 스케줄러 시작
+def start_scheduler():
+    seoul = pytz.timezone("Asia/Seoul")
+    scheduler = BackgroundScheduler(timezone=seoul)
     scheduler.add_job(send_notice, 'interval', minutes=1)
     scheduler.start()
 
-    # Flask 앱 실행
+# 12. 실행
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    set_webhook()
+    start_scheduler()
     app.run(host='0.0.0.0', port=10000)
